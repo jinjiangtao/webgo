@@ -3,7 +3,7 @@ import { useUserStore } from '@/stores/user'
 
 const Layout = () => import('@/layout/index.vue')
 
-const constantRoutes = [
+export const constantRoutes = [
   {
     path: '/login',
     name: 'Login',
@@ -15,54 +15,10 @@ const constantRoutes = [
     name: '404',
     component: () => import('@/views/error/404.vue'),
     meta: { hidden: true }
-  }
-]
-
-const router = createRouter({
-  history: createWebHashHistory(),
-  routes: constantRoutes
-})
-
-const WHITE_LIST = ['/login', '/404']
-
-router.beforeEach(async (to, from, next) => {
-  const userStore = useUserStore()
-  const token = userStore.token
-
-  if (token) {
-    if (to.path === '/login') {
-      next('/')
-    } else {
-      if (!userStore.userInfo || !userStore.userInfo.id) {
-        try {
-          await userStore.getUserInfo()
-          const dynamicRoutes = generateDynamicRoutes(userStore.menus)
-          dynamicRoutes.forEach(route => {
-            router.addRoute(route)
-          })
-          router.addRoute({ path: '/:pathMatch(.*)*', redirect: '/404' })
-          next({ ...to, replace: true })
-        } catch (error) {
-          userStore.logout()
-          next('/login')
-        }
-      } else {
-        next()
-      }
-    }
-  } else {
-    if (WHITE_LIST.includes(to.path)) {
-      next()
-    } else {
-      next('/login')
-    }
-  }
-})
-
-function generateDynamicRoutes(menus) {
-  const routes = []
-  const topRoute = {
+  },
+  {
     path: '/',
+    name: 'Layout',
     component: Layout,
     redirect: '/dashboard',
     children: [
@@ -74,32 +30,102 @@ function generateDynamicRoutes(menus) {
       }
     ]
   }
+]
 
-  function processMenus(menuList, parentPath = '') {
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes: constantRoutes
+})
+
+const WHITE_LIST = ['/login', '/404']
+
+let dynamicRoutesAdded = false
+
+router.beforeEach(async (to, from, next) => {
+  const userStore = useUserStore()
+  const token = userStore.token
+
+  if (token) {
+    if (to.path === '/login') {
+      next('/dashboard')
+    } else {
+      if (!dynamicRoutesAdded) {
+        try {
+          await userStore.getUserInfo()
+          const menuRoutes = generateMenuRoutes(userStore.menus)
+          menuRoutes.forEach(route => {
+            router.addRoute('Layout', route)
+          })
+          router.addRoute({
+            path: '/:pathMatch(.*)*',
+            redirect: '/404'
+          })
+          dynamicRoutesAdded = true
+          next({ ...to, replace: true })
+        } catch (error) {
+          console.error('获取用户信息失败:', error)
+          userStore.logout()
+          dynamicRoutesAdded = false
+          next('/login')
+        }
+      } else {
+        next()
+      }
+    }
+  } else {
+    dynamicRoutesAdded = false
+    if (WHITE_LIST.includes(to.path)) {
+      next()
+    } else {
+      next('/login')
+    }
+  }
+})
+
+function generateMenuRoutes(menus) {
+  const routes = []
+
+  function findLeafMenus(menuList) {
     menuList.forEach(menu => {
       if (menu.children && menu.children.length > 0) {
-        processMenus(menu.children, menu.path)
+        findLeafMenus(menu.children)
       } else {
-        const routePath = menu.path.replace(/^\//, '')
+        let routePath = menu.path
+        if (routePath.startsWith('/')) {
+          routePath = routePath.substring(1)
+        }
         const componentPath = menu.component
         const route = {
           path: routePath,
           name: `Menu_${menu.id}`,
-          component: () => import(`@/views/${componentPath}.vue`).catch(() => import('@/views/error/404.vue')),
+          component: () => {
+            return import(`@/views/${componentPath}.vue`).catch(err => {
+              console.warn(`无法加载组件: ${componentPath}`, err)
+              return import('@/views/error/404.vue')
+            })
+          },
           meta: {
             title: menu.name,
             icon: menu.icon,
             menuId: menu.id
           }
         }
-        topRoute.children.push(route)
+        routes.push(route)
       }
     })
   }
 
-  processMenus(menus)
-  routes.push(topRoute)
+  findLeafMenus(menus)
   return routes
+}
+
+export function resetRouter() {
+  dynamicRoutesAdded = false
+  const newRouter = createRouter({
+    history: createWebHashHistory(),
+    routes: constantRoutes
+  })
+  router.matcher = newRouter.matcher
 }
 
 export default router
