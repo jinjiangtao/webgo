@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { login, logout, getUserInfo } from '@/api/auth'
+import { resetRouter } from '@/router'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -44,6 +45,7 @@ export const useUserStore = defineStore('user', {
       localStorage.removeItem('userInfo')
       localStorage.removeItem('menus')
       localStorage.removeItem('buttons')
+      resetRouter()
     },
 
     hasPermission(code) {

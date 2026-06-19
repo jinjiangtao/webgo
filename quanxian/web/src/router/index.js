@@ -27,8 +27,42 @@ export const constantRoutes = [
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '首页', icon: 'HomeFilled' }
+      },
+      {
+        path: 'system/user',
+        name: 'SystemUser',
+        component: () => import('@/views/system/user/index.vue'),
+        meta: { title: '用户管理', icon: 'User' }
+      },
+      {
+        path: 'system/role',
+        name: 'SystemRole',
+        component: () => import('@/views/system/role/index.vue'),
+        meta: { title: '角色管理', icon: 'Avatar' }
+      },
+      {
+        path: 'system/menu',
+        name: 'SystemMenu',
+        component: () => import('@/views/system/menu/index.vue'),
+        meta: { title: '菜单管理', icon: 'Menu' }
+      },
+      {
+        path: 'system/dept',
+        name: 'SystemDept',
+        component: () => import('@/views/system/dept/index.vue'),
+        meta: { title: '部门管理', icon: 'OfficeBuilding' }
+      },
+      {
+        path: 'system/permission',
+        name: 'SystemPermission',
+        component: () => import('@/views/system/permission/index.vue'),
+        meta: { title: '权限配置', icon: 'Key' }
       }
     ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/404'
   }
 ]
 
@@ -39,8 +73,6 @@ const router = createRouter({
 
 const WHITE_LIST = ['/login', '/404']
 
-let dynamicRoutesAdded = false
-
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   const token = userStore.token
@@ -49,23 +81,13 @@ router.beforeEach(async (to, from, next) => {
     if (to.path === '/login') {
       next('/dashboard')
     } else {
-      if (!dynamicRoutesAdded) {
+      if (!userStore.userInfo) {
         try {
           await userStore.getUserInfo()
-          const menuRoutes = generateMenuRoutes(userStore.menus)
-          menuRoutes.forEach(route => {
-            router.addRoute('Layout', route)
-          })
-          router.addRoute({
-            path: '/:pathMatch(.*)*',
-            redirect: '/404'
-          })
-          dynamicRoutesAdded = true
           next({ ...to, replace: true })
         } catch (error) {
           console.error('获取用户信息失败:', error)
           userStore.logout()
-          dynamicRoutesAdded = false
           next('/login')
         }
       } else {
@@ -73,7 +95,6 @@ router.beforeEach(async (to, from, next) => {
       }
     }
   } else {
-    dynamicRoutesAdded = false
     if (WHITE_LIST.includes(to.path)) {
       next()
     } else {
@@ -82,45 +103,7 @@ router.beforeEach(async (to, from, next) => {
   }
 })
 
-function generateMenuRoutes(menus) {
-  const routes = []
-
-  function findLeafMenus(menuList) {
-    menuList.forEach(menu => {
-      if (menu.children && menu.children.length > 0) {
-        findLeafMenus(menu.children)
-      } else {
-        let routePath = menu.path
-        if (routePath.startsWith('/')) {
-          routePath = routePath.substring(1)
-        }
-        const componentPath = menu.component
-        const route = {
-          path: routePath,
-          name: `Menu_${menu.id}`,
-          component: () => {
-            return import(`@/views/${componentPath}.vue`).catch(err => {
-              console.warn(`无法加载组件: ${componentPath}`, err)
-              return import('@/views/error/404.vue')
-            })
-          },
-          meta: {
-            title: menu.name,
-            icon: menu.icon,
-            menuId: menu.id
-          }
-        }
-        routes.push(route)
-      }
-    })
-  }
-
-  findLeafMenus(menus)
-  return routes
-}
-
 export function resetRouter() {
-  dynamicRoutesAdded = false
   const newRouter = createRouter({
     history: createWebHashHistory(),
     routes: constantRoutes

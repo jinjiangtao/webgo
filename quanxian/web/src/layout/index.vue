@@ -116,7 +116,18 @@ const breadcrumbs = computed(() => {
 
 function getIconComponent(iconName) {
   if (!iconName) return null
-  return Icons[iconName] || null
+  const iconMap = {
+    setting: 'Setting',
+    user: 'User',
+    peoples: 'Avatar',
+    menu: 'Menu',
+    tree: 'OfficeBuilding',
+    key: 'Key',
+    home: 'HomeFilled'
+  }
+  const mappedName = iconMap[iconName.toLowerCase()] || iconName
+  const pascalCaseName = mappedName.charAt(0).toUpperCase() + mappedName.slice(1)
+  return Icons[pascalCaseName] || Icons[mappedName] || null
 }
 
 function toggleCollapse() {
