@@ -2,21 +2,21 @@ package controllers
 
 import (
 	"net/http"
-	"time"
 	"voting-system/config"
 	"voting-system/models"
+	"voting-system/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 type CreateActivityRequest struct {
-	Title       string    `json:"title" binding:"required"`
-	Description string    `json:"description"`
-	StartTime   time.Time `json:"start_time" binding:"required"`
-	EndTime     time.Time `json:"end_time" binding:"required"`
-	VoteType    string    `json:"vote_type" binding:"required,oneof=single multiple"`
-	MaxChoices  int       `json:"max_choices"`
-	Options     []string  `json:"options" binding:"required,min=2"`
+	Title       string        `json:"title" binding:"required"`
+	Description string        `json:"description"`
+	StartTime   utils.DateTime `json:"start_time"`
+	EndTime     utils.DateTime `json:"end_time"`
+	VoteType    string        `json:"vote_type" binding:"required,oneof=single multiple"`
+	MaxChoices  int           `json:"max_choices"`
+	Options     []string      `json:"options" binding:"required,min=2"`
 }
 
 func CreateActivity(c *gin.Context) {
@@ -25,6 +25,28 @@ func CreateActivity(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	if req.StartTime.IsZero() {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "开始时间不能为空",
+		})
+		return
+	}
+	if req.EndTime.IsZero() {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "结束时间不能为空",
+		})
+		return
+	}
+	if !req.EndTime.After(req.StartTime.Time) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "结束时间必须晚于开始时间",
 		})
 		return
 	}
@@ -39,8 +61,8 @@ func CreateActivity(c *gin.Context) {
 	activity := models.Activity{
 		Title:       req.Title,
 		Description: req.Description,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
+		StartTime:   req.StartTime.Time,
+		EndTime:     req.EndTime.Time,
 		VoteType:    req.VoteType,
 		MaxChoices:  req.MaxChoices,
 		Status:      1,
