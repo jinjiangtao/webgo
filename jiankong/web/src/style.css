@@ -1,0 +1,114 @@
+:root {
+  --bg-base: #070b11;
+  --bg-surface: #0e1620;
+  --bg-surface-2: #131e2b;
+  --bg-elevated: #18242f;
+  --border: #1e2d3d;
+  --border-bright: #2a3f55;
+  --text-primary: #e6edf3;
+  --text-secondary: #94a8bd;
+  --text-muted: #5a6b80;
+  --accent: #22d3ee;
+  --accent-dim: #0e7490;
+  --accent-glow: rgba(34, 211, 238, 0.25);
+  --online: #34d399;
+  --online-bg: rgba(52, 211, 153, 0.12);
+  --online-glow: rgba(52, 211, 153, 0.3);
+  --offline: #64748b;
+  --offline-bg: rgba(100, 116, 139, 0.12);
+  --abnormal: #f87171;
+  --abnormal-bg: rgba(248, 113, 113, 0.12);
+  --abnormal-glow: rgba(248, 113, 113, 0.35);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.12);
+  --radius: 6px;
+  --radius-lg: 10px;
+  --font-ui: 'Saira', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body {
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+    radial-gradient(ellipse at top, rgba(14, 116, 144, 0.08), transparent 60%);
+  background-size: 40px 40px, 40px 40px, 100% 100%;
+  background-attachment: fixed;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-dim);
+}
+
+button {
+  font-family: var(--font-ui);
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input, select, textarea {
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+}
+
+@keyframes pulse-abnormal {
+  0%, 100% { box-shadow: 0 0 0 0 var(--abnormal-glow); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
