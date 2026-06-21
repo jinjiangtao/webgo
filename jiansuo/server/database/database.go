@@ -4,6 +4,7 @@ import (
 	"log"
 	"jiansuo/models"
 
+	_ "modernc.org/sqlite"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -12,7 +13,11 @@ var DB *gorm.DB
 
 func Init() {
 	var err error
-	DB, err = gorm.Open(sqlite.Open("jiansuo.db"), &gorm.Config{})
+	dsn := "jiansuo.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)"
+	DB, err = gorm.Open(sqlite.Dialector{
+		DriverName: "sqlite",
+		DSN:        dsn,
+	}, &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
