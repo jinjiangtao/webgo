@@ -18,20 +18,20 @@
         :class="{
           'other-month': !cell.isCurrentMonth,
           'today': cell.isToday,
-          'has-records': cell.dayRecord && cell.dayRecord.records.length > 0,
-          'all-done': cell.dayRecord && cell.dayRecord.completed_count >= cell.dayRecord.task_count && cell.dayRecord.task_count > 0
+          'has-records': cell.dayRecord && cell.dayRecord.records && cell.dayRecord.records.length > 0,
+          'all-done': cell.dayRecord && (cell.dayRecord.completed_count || 0) >= (cell.dayRecord.task_count || 0) && (cell.dayRecord.task_count || 0) > 0
         }"
         @click="handleDayClick(cell)"
       >
         <div class="day-num">{{ cell.day }}</div>
-        <div v-if="cell.dayRecord && cell.dayRecord.records.length > 0" class="day-indicators">
+        <div v-if="cell.dayRecord && cell.dayRecord.records && cell.dayRecord.records.length > 0" class="day-indicators">
           <div class="indicator-row">
             <span
               v-for="r in cell.dayRecord.records.slice(0, 3)"
-              :key="r.id"
+              :key="r.id || r.ID"
               class="record-dot"
               :style="{ background: getRecordColor(r) }"
-              :title="r.task.name + ' - ' + getStatusText(r.status)"
+              :title="getRecordTaskName(r) + ' - ' + getStatusText(r.status || r.Status)"
             ></span>
             <span v-if="cell.dayRecord.records.length > 3" class="more-dot">+{{ cell.dayRecord.records.length - 3 }}</span>
           </div>
@@ -39,8 +39,8 @@
             <div
               class="progress-mini-fill"
               :style="{
-                width: cell.dayRecord.task_count > 0
-                  ? (cell.dayRecord.completed_count / cell.dayRecord.task_count * 100) + '%'
+                width: (cell.dayRecord.task_count || 0) > 0
+                  ? ((cell.dayRecord.completed_count || 0) / cell.dayRecord.task_count * 100) + '%'
                   : '0%'
               }"
             ></div>
@@ -60,23 +60,23 @@
       <div class="detail-header">
         <strong>{{ selectedDay.date }} 打卡详情</strong>
       </div>
-      <div v-if="selectedDay.dayRecord.records.length === 0" class="empty-detail">
+      <div v-if="!selectedDay.dayRecord.records || selectedDay.dayRecord.records.length === 0" class="empty-detail">
         当日暂无打卡记录
       </div>
       <div v-else class="record-list">
-        <div v-for="r in selectedDay.dayRecord.records" :key="r.id" class="record-item">
-          <div class="record-color" :style="{ background: r.task.color || '#6366f1' }"></div>
+        <div v-for="r in selectedDay.dayRecord.records" :key="r.id || r.ID" class="record-item">
+          <div class="record-color" :style="{ background: getRecordTaskColor(r) }"></div>
           <div class="record-info">
-            <div class="record-task">{{ r.task.name }}</div>
+            <div class="record-task">{{ getRecordTaskName(r) }}</div>
             <div class="record-meta">
-              <span class="status-tag" :style="{ background: getStatusBg(r.status), color: getRecordColor(r) }">
-                {{ getStatusText(r.status) }}
+              <span class="status-tag" :style="{ background: getStatusBg(r.status || r.Status), color: getRecordColor(r) }">
+                {{ getStatusText(r.status || r.Status) }}
               </span>
-              <span v-if="r.check_in_time" class="record-time">
-                {{ formatTime(r.check_in_time) }}
+              <span v-if="r.check_in_time || r.CheckInTime" class="record-time">
+                {{ formatTime(r.check_in_time || r.CheckInTime) }}
               </span>
-              <span v-if="r.duration" class="record-duration">
-                {{ formatDuration(r.duration) }}
+              <span v-if="r.duration || r.Duration" class="record-duration">
+                {{ formatDuration(r.duration || r.Duration) }}
               </span>
             </div>
           </div>
@@ -101,7 +101,9 @@ const calendarData = ref(null)
 const selectedDay = ref(null)
 
 const calendarCells = computed(() => {
-  if (!calendarData.value) return []
+  if (!calendarData.value || !Array.isArray(calendarData.value.calendar)) {
+    return buildEmptyCalendar()
+  }
 
   const firstDay = new Date(year.value, month.value - 1, 1)
   const startWeekday = firstDay.getDay()
@@ -111,7 +113,9 @@ const calendarCells = computed(() => {
   const cells = []
   const recordMap = {}
   calendarData.value.calendar.forEach(d => {
-    recordMap[d.date] = d
+    if (d && d.date) {
+      recordMap[d.date] = d
+    }
   })
 
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -126,7 +130,7 @@ const calendarCells = computed(() => {
       date: dateStr,
       isCurrentMonth: false,
       isToday: dateStr === todayStr,
-      dayRecord: recordMap[dateStr]
+      dayRecord: recordMap[dateStr] || null
     })
   }
 
@@ -137,13 +141,13 @@ const calendarCells = computed(() => {
       date: dateStr,
       isCurrentMonth: true,
       isToday: dateStr === todayStr,
-      dayRecord: recordMap[dateStr]
+      dayRecord: recordMap[dateStr] || null
     })
   }
 
+  let nextDayCounter = 1
   while (cells.length % 7 !== 0) {
-    const idx = cells.length - (startWeekday + daysInMonth) + 1
-    const day = idx
+    const day = nextDayCounter++
     const nextMonth = month.value === 12 ? 1 : month.value + 1
     const nextYear = month.value === 12 ? year.value + 1 : year.value
     const dateStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -152,18 +156,58 @@ const calendarCells = computed(() => {
       date: dateStr,
       isCurrentMonth: false,
       isToday: dateStr === todayStr,
-      dayRecord: recordMap[dateStr]
+      dayRecord: recordMap[dateStr] || null
     })
   }
 
   return cells
 })
 
+function buildEmptyCalendar() {
+  const firstDay = new Date(year.value, month.value - 1, 1)
+  const startWeekday = firstDay.getDay()
+  const daysInMonth = new Date(year.value, month.value, 0).getDate()
+  const prevMonthDays = new Date(year.value, month.value - 1, 0).getDate()
+
+  const cells = []
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  for (let i = startWeekday - 1; i >= 0; i--) {
+    const day = prevMonthDays - i
+    const prevMonth = month.value === 1 ? 12 : month.value - 1
+    const prevYear = month.value === 1 ? year.value - 1 : year.value
+    const dateStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    cells.push({ day, date: dateStr, isCurrentMonth: false, isToday: dateStr === todayStr, dayRecord: null })
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year.value}-${String(month.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    cells.push({ day, date: dateStr, isCurrentMonth: true, isToday: dateStr === todayStr, dayRecord: null })
+  }
+
+  let nextDayCounter = 1
+  while (cells.length % 7 !== 0) {
+    const day = nextDayCounter++
+    const nextMonth = month.value === 12 ? 1 : month.value + 1
+    const nextYear = month.value === 12 ? year.value + 1 : year.value
+    const dateStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    cells.push({ day, date: dateStr, isCurrentMonth: false, isToday: dateStr === todayStr, dayRecord: null })
+  }
+
+  return cells
+}
+
 async function loadCalendar() {
-  calendarData.value = await store.fetchCalendar({
-    year: year.value,
-    month: month.value
-  })
+  try {
+    const data = await store.fetchCalendar({
+      year: year.value,
+      month: month.value
+    })
+    calendarData.value = data || { calendar: [] }
+  } catch (e) {
+    console.error('Load calendar failed:', e)
+    calendarData.value = { calendar: [] }
+  }
 }
 
 function prevMonth() {
@@ -187,8 +231,21 @@ function nextMonth() {
 }
 
 function getRecordColor(record) {
-  if (record.status === 'absent') return '#ef4444'
-  return getStatusColor(record.status)
+  const status = record.status || record.Status
+  if (status === 'absent') return '#ef4444'
+  return getStatusColor(status)
+}
+
+function getRecordTaskName(record) {
+  if (record.task && record.task.name) return record.task.name
+  if (record.Task && record.Task.Name) return record.Task.Name
+  return '打卡任务'
+}
+
+function getRecordTaskColor(record) {
+  if (record.task && record.task.color) return record.task.color
+  if (record.Task && record.Task.Color) return record.Task.Color
+  return '#6366f1'
 }
 
 function getStatusBg(status) {
@@ -205,6 +262,7 @@ function getStatusBg(status) {
 function formatTime(timeStr) {
   if (!timeStr) return ''
   const d = new Date(timeStr)
+  if (isNaN(d.getTime())) return ''
   return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 

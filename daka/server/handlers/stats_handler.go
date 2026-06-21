@@ -44,6 +44,9 @@ func GetCalendarData(c *gin.Context) {
 	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
 		dateStr := d.Format("2006-01-02")
 		dayRecords := calendar[dateStr]
+		if dayRecords == nil {
+			dayRecords = make([]models.Record, 0)
+		}
 		completedCount := 0
 		for _, r := range dayRecords {
 			if r.Status != "absent" {
